@@ -1,17 +1,15 @@
 package main
 
-import (
-	"net/http"
-
-	"github.com/bitantics/amerigo/page"
-)
+import "github.com/bitantics/amerigo/sitemap"
 
 func main() {
-	p, err := http.Get("http://bitantics.com/")
-	defer p.Body.Close()
+	sm, err := sitemap.New("http://bitantics.com")
 	if err != nil {
 		panic(err)
 	}
 
-	page.FromText(p.Body)
+	sm.Create()
+	for key, _ := range sm.Pages {
+		println(key)
+	}
 }

@@ -46,14 +46,20 @@ type Resource struct {
 	URL  *url.URL
 }
 
+func (r *Resource) IsInternal(site *url.URL) bool {
+	if !r.URL.IsAbs() {
+		return true
+	}
+
+	return r.URL.Host == site.Host
+}
+
 func attrRes(z *html.Tokenizer, attr string) (*Resource, error) {
-	defer println("")
 	moreAttr := true
 	for moreAttr {
 		key, val, ma := z.TagAttr()
 		moreAttr = ma
 
-		print(" ", string(key))
 		if attr != string(key) {
 			continue
 		}
@@ -74,7 +80,6 @@ func attrRes(z *html.Tokenizer, attr string) (*Resource, error) {
 
 func FromTagTokenizer(z *html.Tokenizer) *Resource {
 	tag, hasAttr := z.TagName()
-	println(string(tag))
 
 	attr, relevantTag := tagAttrs[string(tag)]
 	if !relevantTag || !hasAttr {
