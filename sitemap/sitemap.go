@@ -18,6 +18,7 @@ type SiteMap struct {
 	Site  *url.URL
 
 	pagesLock sync.RWMutex
+	workers   sync.WaitGroup
 }
 
 func New(siteURL string) (*SiteMap, error) {
@@ -40,10 +41,13 @@ func New(siteURL string) (*SiteMap, error) {
 }
 
 func (sm *SiteMap) Create() error {
+	defer sm.workers.Wait()
 	return sm.addPage("")
 }
 
 func (sm *SiteMap) addPage(relPath string) error {
+	defer sm.workers.Done()
+
 	pageURL, err := sm.Site.Parse(relPath)
 	if err != nil {
 		return err
@@ -82,7 +86,8 @@ func (sm *SiteMap) addPage(relPath string) error {
 
 			sm.addResource(pageURL.Path, res)
 			if res.Type == resource.Link && res.IsInternal(sm.Site) {
-				sm.addPage(res.URL.Path)
+				sm.workers.Add(1)
+				go sm.addPage(res.URL.Path)
 			}
 
 		case html.ErrorToken:
