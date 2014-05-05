@@ -1,7 +1,10 @@
 package main
 
-import "flag"
-import "github.com/bitantics/amerigo/sitemap"
+import (
+	"flag"
+
+	"github.com/bitantics/amerigo/sitemap"
+)
 
 func main() {
 	flag.Parse()

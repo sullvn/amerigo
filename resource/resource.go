@@ -31,15 +31,6 @@ var tagAttrs = map[string]string{
 	"track":  "src",
 	"video":  "src",
 }
-var attrTypes = map[string]Type{
-	"code":     Asset,
-	"data":     Asset,
-	"download": Asset,
-	"href":     Link,
-	"manifest": Asset,
-	"poster":   Asset,
-	"src":      Asset,
-}
 
 type Resource struct {
 	Type Type
@@ -70,7 +61,7 @@ func attrRes(z *html.Tokenizer, attr string) (*Resource, error) {
 		}
 
 		res := &Resource{
-			Type: attrTypes[attr],
+			Type: Asset,
 			URL:  resURL,
 		}
 		return res, nil
@@ -87,6 +78,9 @@ func FromTagTokenizer(z *html.Tokenizer) *Resource {
 	}
 
 	if res, err := attrRes(z, attr); err == nil {
+		if string(tag) == "a" {
+			res.Type = Link
+		}
 		return res
 	}
 	return nil
