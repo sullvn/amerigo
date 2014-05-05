@@ -26,6 +26,13 @@ func New(siteURL string) (*SiteMap, error) {
 		return nil, err
 	}
 
+	if site.Scheme == "" {
+		site, err = url.Parse("http://" + siteURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &SiteMap{
 		Pages: make(map[string]page),
 		Site:  site,
@@ -50,10 +57,10 @@ func (sm *SiteMap) addPage(relPath string) error {
 	}
 
 	pageResp, err := http.Get(pageURL.String())
-	defer pageResp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer pageResp.Body.Close()
 
 	sm.pagesLock.Lock()
 	sm.Pages[pageURL.Path] = page{

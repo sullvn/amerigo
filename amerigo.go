@@ -1,9 +1,16 @@
 package main
 
+import "flag"
 import "github.com/bitantics/amerigo/sitemap"
 
 func main() {
-	sm, err := sitemap.New("http://bitantics.com")
+	flag.Parse()
+	if flag.NArg() == 0 {
+		return
+	}
+	site := flag.Arg(0)
+
+	sm, err := sitemap.New(site)
 	if err != nil {
 		panic(err)
 	}
