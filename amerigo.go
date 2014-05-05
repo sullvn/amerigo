@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/bitantics/amerigo/sitemap"
+	"github.com/bitantics/amerigo/crawler"
 )
 
 func main() {
@@ -13,13 +13,26 @@ func main() {
 	}
 	site := flag.Arg(0)
 
-	sm, err := sitemap.New(site)
+	c, err := crawler.New(site)
 	if err != nil {
 		panic(err)
 	}
 
-	sm.Create()
-	for key, _ := range sm.Pages {
-		println(key)
+	done := c.Start()
+
+Crawl:
+	for {
+		select {
+		case page := <-c.Pages:
+			if page != nil {
+				println(page.Path)
+			}
+		case err = <-c.Errors:
+			if err != nil {
+				panic(err)
+			}
+		case <-done:
+			break Crawl
+		}
 	}
 }
