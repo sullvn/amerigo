@@ -18,9 +18,9 @@ func main() {
 		panic(err)
 	}
 
-	c.Start(24)
+	c.Start(32)
 
-Crawl:
+crawl:
 	for {
 		select {
 		case page := <-c.Pages:
@@ -32,7 +32,7 @@ Crawl:
 				panic(err)
 			}
 		case <-c.Done:
-			break Crawl
+			break crawl
 		}
 	}
 }

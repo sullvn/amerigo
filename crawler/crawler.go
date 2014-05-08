@@ -21,6 +21,7 @@ type Crawler struct {
 	visitedLock     sync.RWMutex
 	activeWorkers   sync.WaitGroup
 	pendingRequests chan string
+	countRequests   chan bool
 }
 
 func New(siteURL string) (*Crawler, error) {
@@ -47,6 +48,7 @@ func (c *Crawler) Start(workers int) {
 	c.Done = make(chan bool)
 
 	c.pendingRequests = make(chan string)
+	c.countRequests = make(chan bool)
 
 	for i := workers; i > 0; i-- {
 		go c.requestWorker()
@@ -55,8 +57,18 @@ func (c *Crawler) Start(workers int) {
 	c.scheduleVisit("")
 
 	go (func() {
+		reqCount := 0
+		for _ = range c.countRequests {
+			if reqCount++; reqCount%workers == 0 {
+				http.DefaultTransport.(*http.Transport).CloseIdleConnections()
+			}
+		}
+	})()
+
+	go (func() {
 		c.activeWorkers.Wait()
 		close(c.pendingRequests)
+		close(c.countRequests)
 		close(c.Pages)
 		close(c.Errors)
 		close(c.Done)
@@ -64,6 +76,7 @@ func (c *Crawler) Start(workers int) {
 }
 
 func (c *Crawler) requestWorker() {
+	requests := 0
 	for reqPath := range c.pendingRequests {
 		pg, err := c.visitPage(reqPath)
 
@@ -72,7 +85,9 @@ func (c *Crawler) requestWorker() {
 		} else if pg != nil {
 			c.Pages <- pg
 		}
+
 		c.activeWorkers.Done()
+		requests++
 	}
 }
 
