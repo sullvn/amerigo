@@ -18,7 +18,7 @@ func main() {
 		panic(err)
 	}
 
-	done := c.Start()
+	c.Start(24)
 
 Crawl:
 	for {
@@ -31,7 +31,7 @@ Crawl:
 			if err != nil {
 				panic(err)
 			}
-		case <-done:
+		case <-c.Done:
 			break Crawl
 		}
 	}

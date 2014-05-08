@@ -15,10 +15,12 @@ type Crawler struct {
 	Site   *url.URL
 	Pages  chan *page.Page
 	Errors chan error
+	Done   chan bool
 
-	visited     map[string]bool
-	visitedLock sync.RWMutex
-	workers     sync.WaitGroup
+	visited         map[string]bool
+	visitedLock     sync.RWMutex
+	activeWorkers   sync.WaitGroup
+	pendingRequests chan string
 }
 
 func New(siteURL string) (*Crawler, error) {
@@ -37,24 +39,41 @@ func New(siteURL string) (*Crawler, error) {
 	return &Crawler{Site: site}, nil
 }
 
-func (c *Crawler) Start() chan bool {
+func (c *Crawler) Start(workers int) {
 	c.visited = make(map[string]bool)
 
 	c.Pages = make(chan *page.Page)
 	c.Errors = make(chan error)
-	done := make(chan bool)
+	c.Done = make(chan bool)
+
+	c.pendingRequests = make(chan string)
+
+	for i := workers; i > 0; i-- {
+		go c.requestWorker()
+	}
+
+	c.scheduleVisit("")
 
 	go (func() {
-		c.workers.Add(1)
-		c.visitPage("")
-
-		c.workers.Wait()
+		c.activeWorkers.Wait()
+		close(c.pendingRequests)
 		close(c.Pages)
 		close(c.Errors)
-		close(done)
+		close(c.Done)
 	})()
+}
 
-	return done
+func (c *Crawler) requestWorker() {
+	for reqPath := range c.pendingRequests {
+		pg, err := c.visitPage(reqPath)
+
+		if err != nil {
+			c.Errors <- err
+		} else if pg != nil {
+			c.Pages <- pg
+		}
+		c.activeWorkers.Done()
+	}
 }
 
 func (c *Crawler) markVisited(path string) {
@@ -72,28 +91,35 @@ func (c *Crawler) hasVisited(path string) bool {
 	return visited
 }
 
-func (c *Crawler) visitPage(relPath string) {
-	defer c.workers.Done()
-
-	pageURL, err := c.Site.Parse(relPath)
-	if err != nil {
-		c.Errors <- err
+func (c *Crawler) scheduleVisit(path string) {
+	if c.hasVisited(path) {
 		return
 	}
 
+	c.activeWorkers.Add(1)
+	go (func() {
+		c.pendingRequests <- path
+	})()
+}
+
+func (c *Crawler) visitPage(relPath string) (*page.Page, error) {
+	pageURL, err := c.Site.Parse(relPath)
+	if err != nil {
+		return nil, err
+	}
+
 	if c.hasVisited(pageURL.Path) {
-		return
+		return nil, nil
 	}
 
 	pageResp, err := http.Get(pageURL.String())
 	if err != nil {
-		c.Errors <- err
-		return
+		return nil, err
 	}
 	defer pageResp.Body.Close()
 
 	if c.hasVisited(pageURL.Path) {
-		return
+		return nil, nil
 	}
 	c.markVisited(pageURL.Path)
 
@@ -112,17 +138,15 @@ func (c *Crawler) visitPage(relPath string) {
 
 			rs.Add(res, c.Site)
 			if res.Type == resource.Link && res.IsInternal(c.Site) {
-				c.workers.Add(1)
-				go c.visitPage(res.URL.Path)
+				c.scheduleVisit(res.URL.Path)
 			}
 
 		case html.ErrorToken:
 			if err := tok.Err(); err != io.EOF && err != nil {
-				c.Errors <- err
-				return
+				return nil, err
 			}
 		}
 	}
 
-	c.Pages <- page.NewFromResourceSet(pageURL.Path, rs)
+	return page.NewFromResourceSet(pageURL.Path, rs), nil
 }

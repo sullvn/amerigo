@@ -77,7 +77,7 @@ func FromTagTokenizer(z *html.Tokenizer) *Resource {
 		return nil
 	}
 
-	if res, err := attrRes(z, attr); err == nil {
+	if res, err := attrRes(z, attr); res != nil && err == nil {
 		if string(tag) == "a" {
 			res.Type = Link
 		}
