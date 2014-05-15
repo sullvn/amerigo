@@ -2,7 +2,7 @@ package resource
 
 import "net/url"
 
-// ResourceSet is a bag of unique Resources.
+// ResourceSet is a bag of unique Resources
 type ResourceSet struct {
 	Links, Assets map[string]bool
 }

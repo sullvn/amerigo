@@ -6,7 +6,7 @@ import (
 	"github.com/eapache/channels"
 )
 
-// pathChannel is an infinite channel structure which contains paths to visit.
+// pathChannel is an infinite channel structure which contains paths to visit
 // NOTE (bitantics): currently doesn't avoid duplicates in the queue. How to
 // do this without increasing memory by O(n)?
 type pathChannel struct {

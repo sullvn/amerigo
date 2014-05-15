@@ -15,7 +15,7 @@ import (
 	"github.com/bitantics/amerigo/crawler"
 )
 
-// Currently just prints out the relative URLs to stdout.
+// Currently just prints out the relative URLs to stdout
 func main() {
 	flag.Parse()
 	if flag.NArg() == 0 {

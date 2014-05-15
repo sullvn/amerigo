@@ -1,4 +1,4 @@
-// Package resource implements the collection of URIs and their types.
+// Package resource implements the collection of URIs and their types
 package resource
 
 import (
@@ -14,7 +14,7 @@ const (
 	Asset
 )
 
-// Each HTML tag has an associated, resource containing attribute we care about.
+// Each HTML tag has an associated, resource containing attribute we care about
 var tagAttrs = map[string]string{
 	"a":      "href",
 	"applet": "code",
@@ -34,13 +34,13 @@ var tagAttrs = map[string]string{
 	"video":  "src",
 }
 
-// Resource represents a URI by its type and location (URL).
+// Resource represents a URI by its type and location (URL)
 type Resource struct {
 	Type Type
 	URL  *url.URL
 }
 
-// IsInternal checks if a resource is located on a site.
+// IsInternal checks if a resource is located on a site
 func (r *Resource) IsInternal(site *url.URL) bool {
 	if !r.URL.IsAbs() {
 		return true

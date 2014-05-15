@@ -89,7 +89,7 @@ func (c *Crawler) Start(workers int) {
 		}
 	})()
 
-	// When all download workers are idle, we know we are done.
+	// When all download workers are idle, we know we are done
 	go (func() {
 		c.workers.Wait()
 		c.unvisited.Close()
@@ -100,7 +100,7 @@ func (c *Crawler) Start(workers int) {
 	})()
 }
 
-// requestWorker collects paths, visits them, and returns the results.
+// requestWorker collects paths, visits them, and returns the results
 func (c *Crawler) requestWorker() {
 	for path, err := c.unvisited.Get(); err == nil; path, err = c.unvisited.Get() {
 		pg, err := c.visitPage(path)
@@ -115,7 +115,7 @@ func (c *Crawler) requestWorker() {
 	}
 }
 
-// markVisited marks an internal URL as been visited by the crawler.
+// markVisited marks an internal URL as been visited by the crawler
 func (c *Crawler) markVisited(path string) {
 	c.visitedLock.Lock()
 	defer c.visitedLock.Unlock()
@@ -123,7 +123,7 @@ func (c *Crawler) markVisited(path string) {
 	c.visited[path] = true
 }
 
-// hasVisited checks if a URL has been visited.
+// hasVisited checks if a URL has been visited
 func (c *Crawler) hasVisited(path string) bool {
 	c.visitedLock.RLock()
 	defer c.visitedLock.RUnlock()
@@ -132,7 +132,7 @@ func (c *Crawler) hasVisited(path string) bool {
 	return visited
 }
 
-// scheduleVisit queues a URL to be visited by the download workers.
+// scheduleVisit queues a URL to be visited by the download workers
 func (c *Crawler) scheduleVisit(path string) {
 	if c.hasVisited(path) {
 		return
@@ -151,7 +151,7 @@ func (c *Crawler) visitPage(relPath string) (*page.Page, error) {
 		return nil, err
 	}
 
-	// Avoid HTTP call if we have already been here.
+	// Avoid HTTP call if we have already been here
 	if c.hasVisited(pageURL.Path) {
 		return nil, nil
 	}
@@ -170,13 +170,13 @@ func (c *Crawler) visitPage(relPath string) (*page.Page, error) {
 
 	rs := resource.NewSet()
 
-	// Walk through HTML page, looking for link and asset URIs.
+	// Walk through HTML page, looking for link and asset URIs
 	tok := html.NewTokenizer(pageResp.Body)
 	for tok.Err() != io.EOF {
 		tokType := tok.Next()
 		switch tokType {
 
-		// URIs are only in some tags.
+		// URIs are only in some tags
 		case html.StartTagToken, html.SelfClosingTagToken:
 			res := resource.FromTagTokenizer(tok)
 			if res == nil {
