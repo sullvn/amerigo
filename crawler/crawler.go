@@ -30,11 +30,13 @@ type Crawler struct {
 	Errors chan error
 	Done   chan bool
 
-	visited         map[string]bool
-	visitedLock     sync.RWMutex
-	activeWorkers   sync.WaitGroup
-	pendingRequests chan string
-	countRequests   chan bool
+	unvisited   *pathChannel
+	visited     map[string]bool
+	visitedLock sync.RWMutex
+
+	workers sync.WaitGroup
+
+	countRequests chan bool
 }
 
 // New will create a new Crawler which works on a given domain. Domains may
@@ -61,12 +63,12 @@ func New(siteURL string) (*Crawler, error) {
 // download workers.
 func (c *Crawler) Start(workers int) {
 	c.visited = make(map[string]bool)
+	c.unvisited = newPathChannel()
 
 	c.Pages = make(chan *page.Page)
 	c.Errors = make(chan error)
 	c.Done = make(chan bool)
 
-	c.pendingRequests = make(chan string)
 	c.countRequests = make(chan bool)
 
 	for i := workers; i > 0; i-- {
@@ -75,10 +77,9 @@ func (c *Crawler) Start(workers int) {
 
 	c.scheduleVisit("")
 
-	// Intermittently close idle TCP connections. A response to Go not
-	// closing any sockets, causing file descriptor exhaustion errors.
-	// TODO (bitantics): investigate source of this to see if there is a way
-	// to not do this manually.
+	// Intermittently close idle TCP connections. A response to Go not closing
+	// any sockets, causing file descriptor exhaustion errors.
+	// TODO (bitantics): investigate source of this to avoid doing this manually.
 	go (func() {
 		reqCount := 0
 		for _ = range c.countRequests {
@@ -90,8 +91,8 @@ func (c *Crawler) Start(workers int) {
 
 	// When all download workers are idle, we know we are done.
 	go (func() {
-		c.activeWorkers.Wait()
-		close(c.pendingRequests)
+		c.workers.Wait()
+		c.unvisited.Close()
 		close(c.countRequests)
 		close(c.Pages)
 		close(c.Errors)
@@ -101,8 +102,8 @@ func (c *Crawler) Start(workers int) {
 
 // requestWorker collects paths, visits them, and returns the results.
 func (c *Crawler) requestWorker() {
-	for reqPath := range c.pendingRequests {
-		pg, err := c.visitPage(reqPath)
+	for path, err := c.unvisited.Get(); err == nil; path, err = c.unvisited.Get() {
+		pg, err := c.visitPage(path)
 
 		if err != nil {
 			c.Errors <- err
@@ -110,7 +111,7 @@ func (c *Crawler) requestWorker() {
 			c.Pages <- pg
 		}
 
-		c.activeWorkers.Done()
+		c.workers.Done()
 	}
 }
 
@@ -136,14 +137,8 @@ func (c *Crawler) scheduleVisit(path string) {
 	if c.hasVisited(path) {
 		return
 	}
-
-	c.activeWorkers.Add(1)
-	// Wait for an available worker in the background.
-	// NOTE (bitantics): This not only sort of abuses goroutines as a queue,
-	// it won't prevent duplicates.
-	go (func() {
-		c.pendingRequests <- path
-	})()
+	c.workers.Add(1)
+	c.unvisited.Put(path)
 }
 
 // visitPage takes a URL, then returns a page.Page containing all the links and
