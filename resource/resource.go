@@ -3,6 +3,7 @@ package resource
 
 import (
 	"net/url"
+	"strings"
 
 	"code.google.com/p/go.net/html"
 )
@@ -42,11 +43,11 @@ type Resource struct {
 
 // IsInternal checks if a resource is located on a site
 func (r *Resource) IsInternal(site *url.URL) bool {
-	if !r.URL.IsAbs() {
-		return true
+	if r.URL.Host != "" && r.URL.Host != site.Host {
+		return false
 	}
 
-	return r.URL.Host == site.Host
+	return strings.HasPrefix(r.URL.Path, site.Path)
 }
 
 // attrRes collects a Resource from a given HTML tag attribute if it is present.

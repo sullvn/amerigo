@@ -59,8 +59,8 @@ func New(siteURL string) (*Crawler, error) {
 	return &Crawler{Site: site}, nil
 }
 
-// Start begins the web crawling process. Initializes datastructures and starts
-// download workers.
+// Start begins the web crawling process. Initializes data structures and
+// starts download workers.
 func (c *Crawler) Start(workers int) {
 	c.visited = make(map[string]bool)
 	c.unvisited = newPathChannel()
@@ -75,7 +75,7 @@ func (c *Crawler) Start(workers int) {
 		go c.requestWorker()
 	}
 
-	c.scheduleVisit("")
+	c.scheduleVisit(c.Site.String())
 
 	// Intermittently close idle TCP connections. A response to Go not closing
 	// any sockets, causing file descriptor exhaustion errors.
@@ -103,7 +103,12 @@ func (c *Crawler) Start(workers int) {
 // requestWorker collects paths, visits them, and returns the results
 func (c *Crawler) requestWorker() {
 	for path, err := c.unvisited.Get(); err == nil; path, err = c.unvisited.Get() {
-		pg, err := c.visitPage(path)
+		pageURL, err := c.Site.Parse(path)
+		if err != nil {
+			continue
+		}
+
+		pg, err := c.visitPage(pageURL)
 
 		if err != nil {
 			c.Errors <- err
@@ -144,13 +149,7 @@ func (c *Crawler) scheduleVisit(path string) {
 // visitPage takes a URL, then returns a page.Page containing all the links and
 // assets at that URL. It will also schedule visits to any URLs it comes
 // across.
-func (c *Crawler) visitPage(relPath string) (*page.Page, error) {
-	// Turn relative URL to absolute.
-	pageURL, err := c.Site.Parse(relPath)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Crawler) visitPage(pageURL *url.URL) (*page.Page, error) {
 	// Avoid HTTP call if we have already been here
 	if c.hasVisited(pageURL.Path) {
 		return nil, nil
@@ -183,7 +182,9 @@ func (c *Crawler) visitPage(relPath string) (*page.Page, error) {
 				continue
 			}
 
+			res.URL = pageURL.ResolveReference(res.URL)
 			rs.Add(res, c.Site)
+
 			// Schedule visit if URI is an internal link
 			if res.Type == resource.Link && res.IsInternal(c.Site) {
 				c.scheduleVisit(res.URL.Path)
