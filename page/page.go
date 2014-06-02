@@ -8,8 +8,9 @@ import "github.com/bitantics/amerigo/resource"
 // * Paths for any links and assets. Internal paths should be relative, while
 // external paths are absolute.
 type Page struct {
-	Path          string
-	Links, Assets []string
+	Path   string   `json:"path"`
+	Links  []string `json:"links"`
+	Assets []string `json:"assets"`
 }
 
 // NewFromResourceSet generates a Page from a resource.ResourceSet. It

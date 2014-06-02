@@ -10,9 +10,12 @@ please.
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 
 	"github.com/bitantics/amerigo/crawler"
+	"github.com/bitantics/amerigo/page"
 )
 
 // Currently just prints out the relative URLs to stdout
@@ -30,12 +33,23 @@ func main() {
 
 	c.Start(32)
 
+	fmt.Println("[")
+	defer fmt.Println("\n]")
+
+	firstPage := true
+
 crawl:
 	for {
 		select {
-		case page := <-c.Pages:
-			if page != nil {
-				println(page.Path)
+		case pg := <-c.Pages:
+			if pg != nil {
+				if firstPage {
+					firstPage = false
+				} else {
+					fmt.Println(",")
+				}
+
+				printPage(pg)
 			}
 		case err = <-c.Errors:
 			if err != nil {
@@ -45,4 +59,14 @@ crawl:
 			break crawl
 		}
 	}
+
+}
+
+func printPage(p *page.Page) error {
+	pg, err := json.MarshalIndent(p, "", "\t")
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(pg))
+	return nil
 }
